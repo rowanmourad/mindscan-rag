@@ -16,4 +16,3 @@ reports/*
 # Trained models are usually too large for git -- distribute separately
 # (e.g. Git LFS, a release asset, or a download link) and keep this ignored
 # unless you've set up Git LFS.
-models/*.keras
