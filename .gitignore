@@ -1,0 +1,19 @@
+# Environment / secrets
+.env
+__pycache__/
+*.pyc
+
+# Local data & generated output (doctors' own PDFs, vector DB, reports)
+data/papers/*
+data/vector_db/*
+data/sample_images/*
+reports/*
+!data/papers/.gitkeep
+!data/vector_db/.gitkeep
+!data/sample_images/.gitkeep
+!reports/.gitkeep
+
+# Trained models are usually too large for git -- distribute separately
+# (e.g. Git LFS, a release asset, or a download link) and keep this ignored
+# unless you've set up Git LFS.
+models/*.keras

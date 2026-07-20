@@ -1,0 +1,27 @@
+# Core data handling
+pandas
+
+# PDF text extraction
+pypdf
+
+# Embeddings + vector database
+sentence-transformers
+chromadb
+rank-bm25
+
+# Faster HuggingFace model downloads (optional but recommended)
+hf_transfer
+
+# Classical ML utilities (used by the braintumor package / preprocessing)
+scikit-learn
+opencv-python-headless
+
+# HTTP calls to the OpenRouter API
+requests
+
+# PDF report generation
+reportlab
+
+# Tumor-classification models (loaded via the braintumor package)
+tensorflow
+keras
