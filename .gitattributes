@@ -1,0 +1,2 @@
+data/vector_db/*.sqlite3 filter=lfs diff=lfs merge=lfs -text
+data/vector_db/** filter=lfs diff=lfs merge=lfs -text
