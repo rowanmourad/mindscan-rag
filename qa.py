@@ -7,7 +7,36 @@ PRIMARY basis for the answer. Retrieved PDF literature is SECONDARY --
 used only to add supporting context, never to override or re-evaluate
 the model's output.
 """
+"""
+qa.py
+-----
+PURPOSE:
+This file answers a doctor's follow-up question about a patient.
 
+Pipeline:
+
+Doctor's Question
+        +
+AI Prediction
+        +
+Retrieved Medical Literature
+                ↓
+Construct Prompt
+                ↓
+Large Language Model
+                ↓
+Clinical Decision Support Answer
+
+Unlike a normal chatbot, this system does NOT answer only from the LLM's
+general knowledge.
+
+Instead, it combines:
+1. The AI model's prediction (PRIMARY evidence)
+2. Retrieved medical literature (SECONDARY evidence)
+
+This ensures the answer is grounded in both the patient's MRI prediction
+and trusted scientific literature.
+"""
 from llm_client import call_openrouter
 from retrieval import retrieve_knowledge
 
