@@ -51,6 +51,8 @@ from qa import ask_question
 from report_generator import generate_medical_report
 from vector_store import get_collection
 
+import datetime
+
 st.set_page_config(page_title="MindScan", page_icon="🧠", layout="wide")
 
 config.ensure_directories()
@@ -70,6 +72,8 @@ BORDER = "#E7E7F0"
 PAGE_BG = "#F4F5FA"
 GREEN = "#16A34A"
 
+STEPPER_STEPS = ["Upload", "Analyze", "Localize", "Retrieve Evidence", "Generate Report"]
+
 NAV_ITEMS = [
     ("Dashboard", "🏠"),
     ("Generate Report", "📄"),
@@ -83,17 +87,9 @@ if "page" not in st.session_state:
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
 
-active_index = 0
-for _i, (_label, _icon) in enumerate(NAV_ITEMS):
-    if _label == st.session_state.page or (
-        st.session_state.page == "Dashboard" and _label in ("Generate Report", "Follow-up Q&A")
-        and st.session_state.get("_nav_clicked") != _label
-    ):
-        pass
-# Simple mapping: Dashboard / Generate Report / Follow-up Q&A all render the
-# same combined dashboard view (as in the design). Only the last two nav
-# items get their own placeholder pages.
-DASHBOARD_ALIASES = {"Dashboard", "Generate Report", "Follow-up Q&A"}
+# Dashboard / Generate Report / Follow-up Q&A all render the same combined
+# dashboard view (as in the design). Only the last two nav items get their
+# own placeholder pages.
 try:
     active_index = [label for label, _ in NAV_ITEMS].index(st.session_state.page)
 except ValueError:
@@ -428,6 +424,163 @@ st.markdown(
             font-size: 0.8rem;
             margin-top: 1.6rem;
         }}
+
+        /* ---------------- Sidebar: system status + profile ---------------- */
+        .ms-sys-row {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 1.1rem;
+            font-size: 0.82rem;
+        }}
+        .ms-sys-row .name {{ color: #FFFFFF; font-weight: 600; }}
+        .ms-sys-row .sub {{ color: #8A87AA; font-size: 0.74rem; }}
+        .ms-sys-dot {{
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: {GREEN};
+            box-shadow: 0 0 0 3px rgba(22,163,74,0.18);
+            flex: none;
+        }}
+        .ms-profile {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.8rem 1.1rem;
+            margin-top: 0.6rem;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }}
+        .ms-profile .avatar {{
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: {PRIMARY};
+            color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.85rem;
+            flex: none;
+        }}
+        .ms-profile .name {{ color: #FFFFFF; font-weight: 600; font-size: 0.85rem; line-height:1.2; }}
+        .ms-profile .email {{ color: #8A87AA; font-size: 0.72rem; }}
+
+        /* ---------------- Stepper ---------------- */
+        .ms-stepper {{
+            display: flex;
+            align-items: center;
+            background: #FFFFFF;
+            border: 1px solid {BORDER};
+            border-radius: 14px;
+            box-shadow: 0 2px 10px rgba(20,10,60,0.05);
+            padding: 1rem 1.4rem;
+            margin-bottom: 1.2rem;
+        }}
+        .ms-step {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: #C3C1D6;
+            white-space: nowrap;
+        }}
+        .ms-step.done, .ms-step.active {{ color: {INK}; }}
+        .ms-step.active {{ color: {PRIMARY}; }}
+        .ms-step-circle {{
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: #EDEDF5;
+            color: #A5A3BE;
+            flex: none;
+        }}
+        .ms-step.done .ms-step-circle, .ms-step.active .ms-step-circle {{
+            background: {PRIMARY};
+            color: #fff;
+        }}
+        .ms-step-line {{
+            flex: 1;
+            height: 2px;
+            background: #EDEDF5;
+            margin: 0 14px;
+            border-radius: 2px;
+        }}
+        .ms-step-line.done {{ background: {PRIMARY}; }}
+
+        /* ---------------- Probability bars ---------------- */
+        .ms-prob-row {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 7px;
+            font-size: 0.8rem;
+        }}
+        .ms-prob-row .prob-label {{ width: 92px; color: {INK}; font-weight: 500; flex: none; }}
+        .ms-prob-row .prob-track {{
+            flex: 1;
+            height: 6px;
+            background: #EDEDF5;
+            border-radius: 4px;
+            overflow: hidden;
+        }}
+        .ms-prob-row .prob-fill {{
+            height: 100%;
+            background: {PRIMARY};
+            border-radius: 4px;
+        }}
+        .ms-prob-row .prob-pct {{ width: 44px; text-align: right; color: {MUTED}; font-weight: 600; flex: none; }}
+
+        /* ---------------- Info notes / status badges ---------------- */
+        .ms-note {{
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            background: #F7F7FC;
+            border-radius: 8px;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.76rem;
+            color: {MUTED};
+            margin-top: 0.7rem;
+        }}
+        .ms-status-pill {{
+            display: inline-block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 999px;
+        }}
+        .ms-status-pill.green {{ background: #DCFCE7; color: #15803D; }}
+        .ms-status-pill.gray {{ background: #F1F1F6; color: {MUTED}; }}
+
+        .ms-panel-heading {{
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: {MUTED};
+            margin-bottom: 4px;
+        }}
+        .ms-mini-img-caption {{
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: {INK};
+            margin-bottom: 6px;
+        }}
+        .ms-legend {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            font-size: 0.7rem;
+            color: {MUTED};
+            font-weight: 600;
+        }}
+        .ms-legend-bar {{
+            width: 10px;
+            flex: 1;
+            border-radius: 6px;
+            background: linear-gradient(180deg, #DC2626 0%, #F59E0B 25%, #FACC15 45%, #22C55E 65%, #3B82F6 85%, #6D28D9 100%);
+            margin: 6px 0;
+        }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -448,18 +601,31 @@ with st.sidebar:
             st.session_state.page = label
             st.rerun()
 
+    st.markdown('<div class="ms-sidebar-heading">System</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="ms-sys-row"><span><span class="name">Model</span><br>'
+        '<span class="sub">AdaptiveScan v1.0</span></span><span class="ms-sys-dot"></span></div>'
+        '<div class="ms-sys-row"><span><span class="name">RAG</span><br>'
+        '<span class="sub">Connected</span></span><span class="ms-sys-dot"></span></div>'
+        '<div class="ms-sys-row"><span><span class="name">Vector DB</span><br>'
+        '<span class="sub">ChromaDB</span></span><span class="ms-sys-dot"></span></div>',
+        unsafe_allow_html=True,
+    )
+
     st.markdown('<div class="ms-sidebar-heading">App Settings</div>', unsafe_allow_html=True)
     top_k = st.slider("Number of literature sources", 1, 10, 5, label_visibility="visible")
 
     st.markdown(
-        '<div class="ms-sidebar-note">Research/educational tool — not a medical diagnosis. '
-        "All findings require clinician confirmation.</div>",
+        '<div class="ms-research-mode">🛡️<div><span class="title">Research Mode</span>'
+        '<span class="sub">For research and educational use only. Not a medical diagnosis.</span>'
+        "</div></div>",
         unsafe_allow_html=True,
     )
 
     st.markdown(
-        '<div class="ms-research-mode">🛡️<div><span class="title">Research Mode</span>'
-        '<span class="sub">Not for clinical decision-making</span></div></div>',
+        '<div class="ms-profile"><div class="avatar">R</div>'
+        '<div><div class="name">Researcher</div>'
+        '<div class="email">researcher@mindscan.ai</div></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -490,7 +656,7 @@ with h_right:
             <div class="row"><span class="label">System Status</span>
                 <span><span class="dot"></span>Online</span></div>
             <div class="row"><span class="label">Model: AdaptiveScan v1.0</span>
-                <span class="dot"></span></div>
+                <span style="color:#A5A3BE;">ⓘ</span></div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -557,36 +723,80 @@ if st.session_state.page == "How MindScan Works":
 # ==========================================================================
 # Dashboard (Generate Report + Follow-up Q&A combined)
 # ==========================================================================
-col_left, col_right = st.columns([1, 1.6], gap="medium")
+last_result = st.session_state.get("last_result")
+uploaded_image = st.session_state.get("report_image")
 
-# ---------------- Left column: upload + patient context ----------------
-with col_left:
+# ---------------- Stepper ----------------
+if not uploaded_image:
+    current_step = 1
+elif not last_result:
+    current_step = 2
+else:
+    current_step = 5
+
+step_html = '<div class="ms-stepper">'
+for i, step_name in enumerate(STEPPER_STEPS, start=1):
+    state = "done" if i < current_step else ("active" if i == current_step else "")
+    step_html += (
+        f'<div class="ms-step {state}"><span class="ms-step-circle">'
+        f'{"✓" if i < current_step else i}</span>{step_name}</div>'
+    )
+    if i < len(STEPPER_STEPS):
+        line_state = "done" if i < current_step else ""
+        step_html += f'<div class="ms-step-line {line_state}"></div>'
+step_html += "</div>"
+st.markdown(step_html, unsafe_allow_html=True)
+
+col_upload, col_classify, col_localize = st.columns([1, 1, 1.15], gap="medium")
+
+# ---------------- Column 1: MRI input + patient context ----------------
+with col_upload:
     with st.container(border=True):
-        st.markdown(
-            '<div class="ms-card-title"><span class="ms-badge">1</span> Upload MRI Image</div>',
-            unsafe_allow_html=True,
-        )
+        title_col, badge_col = st.columns([2, 1])
+        with title_col:
+            st.markdown(
+                '<div class="ms-card-title"><span class="ms-badge">1</span> MRI Input</div>',
+                unsafe_allow_html=True,
+            )
+        with badge_col:
+            if uploaded_image:
+                st.markdown(
+                    '<div style="text-align:right;"><span class="ms-status-pill green">Image Uploaded</span></div>',
+                    unsafe_allow_html=True,
+                )
+
         uploaded_image = st.file_uploader(
             "Drag & drop MRI image here, or click to browse. Supports JPG, PNG (max 200MB).",
             type=["jpg", "jpeg", "png"],
             key="report_image",
             label_visibility="collapsed",
         )
+        if uploaded_image:
+            size_kb = len(uploaded_image.getbuffer()) / 1024
+            st.markdown(
+                f'<div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">'
+                f'<div><div style="font-weight:600; font-size:0.85rem; color:{INK};">{uploaded_image.name}</div>'
+                f'<div style="font-size:0.75rem; color:{MUTED};">{size_kb:.0f}KB · '
+                f'{uploaded_image.type.split("/")[-1].upper()}</div></div></div>',
+                unsafe_allow_html=True,
+            )
 
     with st.container(border=True):
-        st.markdown(
-            '<div class="ms-card-title"><span class="ms-badge">2</span> Patient Context (Optional)</div>',
-            unsafe_allow_html=True,
-        )
+        st.markdown("**Patient Context (Optional)**")
         patient_age = st.text_input("Patient Age", placeholder="e.g., 45", key="patient_age")
         clinical_notes = st.text_area(
             "Clinical Notes",
             placeholder="e.g., headache and visual disturbance for 3 weeks.",
             key="clinical_notes",
-            height=110,
+            height=100,
         )
         generate_clicked = st.button(
-            "📄  Generate Clinical Report", type="primary", use_container_width=True
+            "🧠  Analyze MRI", type="primary", use_container_width=True
+        )
+        st.markdown(
+            f'<div style="font-size:0.76rem; color:{MUTED}; margin-top:6px;">Analysis includes '
+            "classification, localization and report generation.</div>",
+            unsafe_allow_html=True,
         )
 
 patient_context_parts = []
@@ -619,86 +829,127 @@ if generate_clicked:
                     top_k=top_k,
                 )
                 result["_uploaded_image"] = uploaded_image
+                result["_patient_age"] = patient_age
+                result["_clinical_notes"] = clinical_notes
+                result["_analyzed_at"] = datetime.datetime.now().strftime("%B %d, %Y · %H:%M")
                 st.session_state["last_result"] = result
+                st.rerun()
             except Exception as e:
                 st.error(f"Report generation failed: {e}")
 
 last_result = st.session_state.get("last_result")
 
-# ---------------- Right column: AI analysis results ----------------
-with col_right:
+# ---------------- Column 2: AI Classification ----------------
+with col_classify:
     with st.container(border=True):
         st.markdown(
-            '<div class="ms-card-title"><span class="ms-badge">3</span> AI Analysis Results</div>',
+            '<div class="ms-card-title">🧬 AI Classification</div>',
             unsafe_allow_html=True,
         )
 
         if not last_result:
             st.markdown(
-                '<div class="ms-body-text" style="color:#6B7280;">Upload an MRI image and click '
-                "<b>Generate Clinical Report</b> to see predictions here.</div>",
+                f'<div class="ms-body-text" style="color:{MUTED};">Run <b>Analyze MRI</b> to see '
+                "the predicted diagnosis and confidence here.</div>",
                 unsafe_allow_html=True,
             )
         else:
             pred = last_result["prediction"]
             conf_pct = pred["confidence"] * 100
-            rd = last_result["report_data"]
+            grade = pred.get("grade")
 
-            res_left, res_right = st.columns([1, 1], gap="medium")
+            st.markdown('<div class="ms-pred-label">Predicted Diagnosis</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ms-pred-value">{pred["predicted_class"]}</div>', unsafe_allow_html=True)
+            if grade:
+                st.markdown(f'<div class="ms-pred-sub">({grade})</div>', unsafe_allow_html=True)
 
-            with res_left:
-                st.markdown('<div class="ms-pred-label">Predicted Diagnosis</div>', unsafe_allow_html=True)
+            st.markdown('<div class="ms-pred-label" style="margin-top:0.8rem;">Confidence Score</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="ms-conf-value">{conf_pct:.1f}%</div>', unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="ms-progress-track">
+                    <div class="ms-progress-fill" style="width:{min(conf_pct,100):.0f}%;"></div>
+                </div>
+                <div class="ms-progress-scale"><span>0%</span><span>50%</span><span>100%</span></div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            st.markdown('<div class="ms-pred-label">Top Probabilities</div>', unsafe_allow_html=True)
+            all_probs = sorted(pred["all_probabilities"].items(), key=lambda x: x[1], reverse=True)
+            bars_html = ""
+            for label, value in all_probs:
+                pct = value * 100
+                bars_html += (
+                    f'<div class="ms-prob-row"><span class="prob-label">{label}</span>'
+                    f'<span class="prob-track"><span class="prob-fill" style="width:{min(pct,100):.1f}%;"></span></span>'
+                    f'<span class="prob-pct">{pct:.1f}%</span></div>'
+                )
+            st.markdown(bars_html, unsafe_allow_html=True)
+
+            st.markdown(
+                '<div class="ms-note">ⓘ Classification pathway is independent from localization.</div>',
+                unsafe_allow_html=True,
+            )
+
+# ---------------- Column 3: Tumor Localization ----------------
+with col_localize:
+    with st.container(border=True):
+        heatmap_path = last_result.get("heatmap_path") or last_result.get("heatmap") if last_result else None
+
+        title_col, badge_col = st.columns([2, 1.2])
+        with title_col:
+            st.markdown(
+                '<div class="ms-card-title">📍 Tumor Localization <span style="color:'
+                f'{MUTED}; font-weight:500; font-size:0.82rem;">(Independent)</span></div>',
+                unsafe_allow_html=True,
+            )
+        with badge_col:
+            if last_result:
+                pill = "green" if heatmap_path else "gray"
+                text = "Localization Complete" if heatmap_path else "Localization Unavailable"
                 st.markdown(
-                    f'<div class="ms-pred-value">{pred["predicted_class"]}</div>',
+                    f'<div style="text-align:right;"><span class="ms-status-pill {pill}">{text}</span></div>',
                     unsafe_allow_html=True,
                 )
-                st.markdown('<div class="ms-pred-sub">Model confidence score below</div>', unsafe_allow_html=True)
 
-                st.markdown('<div class="ms-pred-label">Confidence Score</div>', unsafe_allow_html=True)
-                st.markdown(f'<div class="ms-conf-value">{conf_pct:.0f}%</div>', unsafe_allow_html=True)
-                st.markdown(
-                    f"""
-                    <div class="ms-progress-track">
-                        <div class="ms-progress-fill" style="width:{min(conf_pct,100):.0f}%;"></div>
-                    </div>
-                    <div class="ms-progress-scale"><span>0%</span><span>50%</span><span>100%</span></div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
-                st.markdown('<div class="ms-pred-label">Key Findings</div>', unsafe_allow_html=True)
-                findings_text = rd.get("findings", "")
-                findings_items = [
-                    s.strip() for s in findings_text.replace("\n", ". ").split(".") if s.strip()
-                ][:4]
-                if findings_items:
-                    for item in findings_items:
-                        st.markdown(
-                            f'<div class="ms-finding"><span class="check">✓</span><span>{item}.</span></div>',
-                            unsafe_allow_html=True,
-                        )
+        if not last_result:
+            st.markdown(
+                f'<div class="ms-body-text" style="color:{MUTED};">The localization heatmap will '
+                "appear here after you run <b>Analyze MRI</b>.</div>",
+                unsafe_allow_html=True,
+            )
+        else:
+            img_col, heat_col, legend_col = st.columns([1, 1, 0.18])
+            with img_col:
+                st.markdown('<div class="ms-mini-img-caption">MRI (T1 Contrast)</div>', unsafe_allow_html=True)
+                st.image(last_result["_uploaded_image"], use_container_width=True)
+            with heat_col:
+                st.markdown('<div class="ms-mini-img-caption">Localization Heatmap</div>', unsafe_allow_html=True)
+                if heatmap_path:
+                    st.image(heatmap_path, use_container_width=True)
                 else:
                     st.markdown(
-                        '<div class="ms-body-text" style="color:#6B7280;">No findings text returned.</div>',
+                        f'<div style="background:#0F0B1F; border-radius:10px; height:150px; '
+                        f'display:flex; align-items:center; justify-content:center; color:{MUTED}; '
+                        'font-size:0.75rem; text-align:center; padding:0.5rem;">No heatmap<br>returned by pipeline</div>',
+                        unsafe_allow_html=True,
+                    )
+            if heatmap_path:
+                with legend_col:
+                    st.markdown(
+                        '<div class="ms-legend">High<div class="ms-legend-bar"></div>Low</div>',
                         unsafe_allow_html=True,
                     )
 
-            with res_right:
-                heatmap_path = last_result.get("heatmap_path") or last_result.get("heatmap")
-                if heatmap_path:
-                    st.markdown("**Tumor Localization (Heatmap)**")
-                    st.image(heatmap_path, use_container_width=True)
-                else:
-                    st.markdown("**MRI Image**")
-                    st.image(last_result["_uploaded_image"], use_container_width=True)
-                    st.caption(
-                        "No Grad-CAM heatmap was returned by the pipeline. Return a "
-                        "`heatmap_path` from `generate_medical_report()` to show a localization "
-                        "overlay here."
-                    )
-
-                with st.expander("Class probabilities"):
-                    st.json(pred["all_probabilities"])
+            note = (
+                "Localization is performed independently from the classifier using the "
+                "Adaptive Localization Module."
+                if heatmap_path
+                else "No `heatmap_path`/`heatmap` key was returned by `generate_medical_report()` — "
+                "wire it up to enable a Grad-CAM style localization overlay here."
+            )
+            st.markdown(f'<div class="ms-note">✅ {note}</div>', unsafe_allow_html=True)
 
 # ---------------- Clinical report draft ----------------
 if last_result:
@@ -706,7 +957,8 @@ if last_result:
         title_col, dl_col = st.columns([4, 1])
         with title_col:
             st.markdown(
-                '<div class="ms-card-title"><span class="ms-badge">4</span> Clinical Report (Draft)</div>',
+                '<div class="ms-card-title">ⓘ Clinical Report <span style="color:#6B7280; '
+                'font-weight:500; font-size:0.82rem;">(AI Generated)</span></div>',
                 unsafe_allow_html=True,
             )
         with dl_col:
@@ -721,11 +973,73 @@ if last_result:
                     )
 
         rd = last_result["report_data"]
+        pred = last_result["prediction"]
         tabs = st.tabs(["Summary", "Findings", "Impression", "Recommendations", "References"])
 
         with tabs[0]:
-            st.markdown('<div class="ms-section-heading">Clinical Summary</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="ms-body-text">{rd.get("clinical_history", "")}</div>', unsafe_allow_html=True)
+            sum_pc, sum_imp, sum_find, sum_reco = st.columns(4, gap="medium")
+
+            with sum_pc:
+                st.markdown('<div class="ms-section-heading">Patient Context</div>', unsafe_allow_html=True)
+                age = last_result.get("_patient_age") or "—"
+                notes = last_result.get("_clinical_notes") or "—"
+                analyzed_at = last_result.get("_analyzed_at", "")
+                st.markdown(
+                    f'<div class="ms-panel-heading" style="margin-top:6px;">Age</div>'
+                    f'<div class="ms-body-text">{age}</div>'
+                    f'<div class="ms-panel-heading" style="margin-top:10px;">Clinical Notes</div>'
+                    f'<div class="ms-body-text">{notes}</div>'
+                    f'<div class="ms-panel-heading" style="margin-top:10px;">Analysis Date</div>'
+                    f'<div class="ms-body-text">{analyzed_at}</div>',
+                    unsafe_allow_html=True,
+                )
+
+            with sum_imp:
+                st.markdown('<div class="ms-section-heading">AI Impression</div>', unsafe_allow_html=True)
+                grade = pred.get("grade")
+                grade_str = f' ({grade})' if grade else ""
+                st.markdown(
+                    f'<div style="color:{PRIMARY}; font-weight:700; margin:4px 0 8px 0;">'
+                    f'{pred["predicted_class"]}{grade_str}</div>'
+                    f'<div class="ms-body-text">{rd.get("impression", "")}</div>'
+                    f'<div class="ms-panel-heading" style="margin-top:10px;">Confidence</div>'
+                    f'<div style="color:{GREEN}; font-weight:700;">{pred["confidence"] * 100:.1f}%</div>',
+                    unsafe_allow_html=True,
+                )
+
+            with sum_find:
+                st.markdown('<div class="ms-section-heading">Key Findings</div>', unsafe_allow_html=True)
+                findings_text = rd.get("findings", "")
+                findings_items = [
+                    s.strip() for s in findings_text.replace("\n", ". ").split(".") if s.strip()
+                ][:5]
+                if findings_items:
+                    for item in findings_items:
+                        st.markdown(
+                            f'<div class="ms-finding"><span class="check">✓</span><span>{item}.</span></div>',
+                            unsafe_allow_html=True,
+                        )
+                else:
+                    st.markdown(
+                        f'<div class="ms-body-text" style="color:{MUTED};">No findings text returned.</div>',
+                        unsafe_allow_html=True,
+                    )
+
+            with sum_reco:
+                st.markdown('<div class="ms-section-heading">Recommendations</div>', unsafe_allow_html=True)
+                reco_items = [s.strip() for s in rd.get("recommendations", "").split("\n") if s.strip()]
+                if reco_items:
+                    st.markdown(
+                        "<ul style='margin:6px 0 0 1.1rem; padding:0;'>"
+                        + "".join(f"<li style='font-size:0.85rem; margin-bottom:4px;'>{item}</li>" for item in reco_items)
+                        + "</ul>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.markdown(
+                        f'<div class="ms-body-text">{rd.get("recommendations", "")}</div>',
+                        unsafe_allow_html=True,
+                    )
 
         with tabs[1]:
             st.markdown('<div class="ms-section-heading">Findings</div>', unsafe_allow_html=True)
@@ -768,7 +1082,7 @@ st.write("")
 # ---------------- Ask a follow-up question ----------------
 with st.container(border=True):
     st.markdown(
-        '<div class="ms-card-title"><span class="ms-badge">5</span> Ask a Follow-up Question</div>',
+        '<div class="ms-card-title">❓ Ask a Follow-up Question</div>',
         unsafe_allow_html=True,
     )
     if last_result:
@@ -840,4 +1154,3 @@ st.markdown(
     "reviewed and confirmed by a qualified healthcare professional.</div>",
     unsafe_allow_html=True,
 )
- 
